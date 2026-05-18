@@ -55,6 +55,7 @@ if (process.env.QUEUE_ENABLED === 'true') {
         database: configService.get<string>('database.database', './data/main.sqlite'),
         entities: [__dirname + '/modules/auth/**/*.entity{.ts,.js}', __dirname + '/modules/audit/**/*.entity{.ts,.js}'],
         synchronize: true,
+        keepConnectionAlive: true,
         logging: configService.get<boolean>('database.logging', false),
       }),
     }),
@@ -92,6 +93,7 @@ if (process.env.QUEUE_ENABLED === 'true') {
             retryDelay: 3000,
             extra: {
               max: configService.get<number>('dataDatabase.poolSize', 10),
+              keepConnectionAlive: true,
             },
           };
         }
@@ -104,6 +106,7 @@ if (process.env.QUEUE_ENABLED === 'true') {
           type: 'sqlite' as const,
           database: configService.get<string>('dataDatabase.database', './data/openwa.sqlite'),
           synchronize: configService.get<boolean>('dataDatabase.synchronize', true),
+          keepConnectionAlive: true,
           migrationsRun: !configService.get<boolean>('dataDatabase.synchronize', true),
         };
       },
