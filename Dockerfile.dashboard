@@ -1,0 +1,52 @@
+# OpenWA Dashboard — Dockerfile para EasyPanel
+# Build context: RAIZ do repositório (comportamento padrão do EasyPanel)
+# Configurar no EasyPanel: Dockerfile = Dockerfile.dashboard
+
+# ===== Stage 1: Build React/Vite =====
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copia package.json do dashboard (prefixo dashboard/ pois contexto é a raiz)
+COPY dashboard/package*.json ./
+
+# Instala dependências do dashboard
+RUN npm ci
+
+# Copia APENAS a pasta dashboard
+COPY dashboard/ .
+
+# Recebe a URL da API como build arg (configurado no EasyPanel → Environment)
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+# Compila o React com Vite → gera /app/dist
+RUN npm run build
+
+# ===== Stage 2: Nginx para servir os arquivos estáticos =====
+FROM nginx:alpine
+
+# Copia os arquivos compilados do React
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Config do Nginx embutida via RUN (sem depender de arquivo externo)
+# SPA routing: redireciona todas as rotas para index.html
+RUN printf 'server {\n\
+    listen 80;\n\
+    server_name localhost;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    gzip on;\n\
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;\n\
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, immutable";\n\
+    }\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
