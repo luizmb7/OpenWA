@@ -73,7 +73,12 @@ async function bootstrap() {
   // Wire up graceful shutdown service
   const shutdownService = app.get(ShutdownService);
   shutdownService.setShutdownCallback(async () => {
-    await app.close();
+    try {
+      await app.close();
+    } catch (_e) {
+      // Silencia o erro de named TypeORM connections no shutdown
+      process.exit(0);
+    }
   });
 
   // Enhanced Security Headers (Phase 3 Security Audit)
